@@ -1,16 +1,25 @@
 #!/usr/bin/env python3.4
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import argparse
 import os
 import sqlite3
 import sys
+import random
 
 ACT_ARRIVE = 'arrive'
 ACT_BREAK  = 'break'
 ACT_RESUME = 'resume'
 ACT_LEAVE  = 'leave'
+
+MSG_ERR_NOT_WORKING   = 1 << 0
+MSG_ERR_HAVE_NOT_LEFT = 1 << 1
+MSG_ERR_NOT_BREAKING  = 1 << 2
+MSG_SUCCESS_ARRIVAL   = 1 << 3
+MSG_SUCCESS_BREAK     = 1 << 4
+MSG_SUCCESS_RESUME    = 1 << 5
+MSG_SUCCESS_LEAVE     = 1 << 6
 
 class ProgramAbortError(Exception):
 	"""
@@ -45,6 +54,82 @@ def error(msg, ex):
 	"""
 	raise ProgramAbortError(msg, ex)
 
+def randomMessage(type, *args):
+	messageList = []
+
+	if type == MSG_SUCCESS_ARRIVAL:
+		if len(args) > 0:
+			arrivalTime = args[0]
+			if arrivalTime.hour <= 7:
+				messageList.append("The early bird catches the worm. Welcome and have a nice day!")
+			elif arrivalTime.hour <= 9:
+				messageList.append("Good morning.")
+			elif arrivalTime.hour >= 10:
+				messageList.append("Coming in late today? Have fun working anyway.")
+
+			if arrivalTime.weekday() == 0: # Monday
+				messageList.append("Have a nice start into the fresh week!")
+				messageList.append("New week, new luck!")
+			elif arrivalTime.weekday() == 4: # Friday
+				messageList.append("Last day of the week! Almost done! Keep on going!")
+				messageList.append("Just a couple more hours until weekend. Have fun!")
+			elif arrivalTime.weekday() == 5: # Saturday
+				messageList.append("Oh, so they made you work on Saturday? I'm sorry :/")
+				messageList.append("Saturday, meh. Hang in there, it'll be over soon.")
+
+		messageList.append("Welcome and have a nice day!")
+
+	elif type == MSG_SUCCESS_BREAK:
+		breakTime = None
+		workStartTime = None
+		if len(args) > 0:
+			breakTime = args[0]
+		if len(args) > 1:
+			workStartTime = args[0]
+
+		if breakTime is not None and workStartTime is not None:
+			duration = breakTime - workStartTime
+			durationHours = duration.total_seconds() // 3600
+			durationMinutes = (duration.total_seconds() - (durationHours * 3600)) // 60
+			msgText = ""
+			if durationHours > 1:
+				msgText += "{} hours".format(durationHours)
+			elif durationHours == 1:
+				msgText += "{} hour".format(durationHours)
+
+			if durationHours > 0 and durationMinutes > 2: # avoid 1 hour 2 minutes
+				msgText += " and "
+
+			if durationHours == 0 or durationMinutes > 2:
+				if durationMinutes > 1:
+					msgText += "{} minutes".format(durationMinutes)
+				else:
+					msgText += "{} minutes".format(durationMinutes)
+
+			msgText += " of work."
+
+			if duration.total_seconds() >= 4 * 60 * 60: # more than 4h, time for a break
+				msgText += " Time for a well-deserved break."
+			else:
+				msgText += " I guess a coffee break wouldn't hurt, would it?"
+
+			messageList.append(msgText)
+
+		if breakTime is not None:
+			if breakTime.hour >= 11 and breakTime.hour <= 13:
+				messageList.append("{:%H:%M}. A good time for lunch.".format(breakTime))
+			if breakTime.hour < 11:
+				messageList.append("{0.hour} o'clock. Breakfast time!".format(breakTime))
+			if breakTime.hour > 13:
+				messageList.append("Coffee?")
+				messageList.append("Good idea, take a break and relax a little.")
+
+		messageList.append("Enjoy your break!")
+		messageList.append("Relax a little and all your problems will have gotten simpler once you're back :-)")
+		messageList.append("Bye bye!")
+
+	return random.choice(messageList)
+
 def dbSetup():
 	"""
 	Create a new SQLite database in the user's home, creating and initializing
@@ -60,14 +145,14 @@ def dbSetup():
 		con.execute("""
 				CREATE TABLE times (
 					  type TEXT NOT NULL CHECK (
-						   type == ?
-						OR type == ?
-						OR type == ?
-						OR type == ?)
+						   type == "{}"
+						OR type == "{}"
+						OR type == "{}"
+						OR type == "{}")
 					, ts TIMESTAMP NOT NULL
 					, PRIMARY KEY (type, ts)
 				)
-			""", (ACT_ARRIVE, ACT_BREAK, ACT_RESUME, ACT_LEAVE))
+			""".format(ACT_ARRIVE, ACT_BREAK, ACT_RESUME, ACT_LEAVE))
 		con.execute("PRAGMA user_version = 1")
 		con.commit()
 	# database upgrade code would go here
@@ -98,12 +183,12 @@ def startTracking(con):
 	"""
 	# Make sure you're not already at work.
 	lastType = getLastType(con)
-	if lastType is not None && lastType != ACT_LEAVE:
-		error(randomMessage(ERR_HAVE_NOT_LEFT))
+	if lastType is not None and lastType != ACT_LEAVE:
+		error(randomMessage(MSG_ERR_HAVE_NOT_LEFT))
 
 	arrivalTime = datetime.now()
 	addEntry(con, ACT_ARRIVE, arrivalTime)
-	message(randomMessage(SUCCESS_ARRIVAL, arrivalTime))
+	message(randomMessage(MSG_SUCCESS_ARRIVAL, arrivalTime))
 
 def suspendTracking(con):
 	"""
@@ -115,11 +200,11 @@ def suspendTracking(con):
 	lastType = getLastType(con)
 	lastTime = getLastTime(con)
 	if lastType not in [ACT_ARRIVE, ACT_RESUME]:
-		error(randomMessage(ERR_NOT_WORKING, lastType))
+		error(randomMessage(MSG_ERR_NOT_WORKING, lastType))
 
 	breakTime = datetime.now()
 	addEntry(con, ACT_BREAK, breakTime)
-	message(randomMessage(SUCCESS_BREAK, breakTime, lastTime))
+	message(randomMessage(MSG_SUCCESS_BREAK, breakTime, lastTime))
 
 def resumeTracking(con):
 	"""
@@ -131,11 +216,11 @@ def resumeTracking(con):
 	lastType = getLastType(con)
 	lastTime = getLastTime(con)
 	if lastType != ACT_BREAK:
-		error(randomMessage(ERR_NOT_BREAKING, lastType))
+		error(randomMessage(MSG_ERR_NOT_BREAKING, lastType))
 
 	resumeTime = datetime.now()
 	addEntry(con, ACT_RESUME, resumeTime)
-	message(randomMessage(SUCCESS_RESUME, resumeTime, lastTime))
+	message(randomMessage(MSG_SUCCESS_RESUME, resumeTime, lastTime))
 
 def endTracking(con):
 	"""
@@ -144,11 +229,11 @@ def endTracking(con):
 	# Make sure you've actually been at work. Can't leave if you're not even here!
 	lastType = getLastType(con)
 	if lastType not in [ACT_ARRIVE, ACT_RESUME]:
-		error(randomMessage(ERR_NOT_WORKING, lastType)
+		error(randomMessage(MSG_ERR_NOT_WORKING, lastType))
 
 	leaveTime = datetime.now()
 	addEntry(con, ACT_LEAVE, leaveTime)
-	message(randomMessage(SUCCESS_LEAVE, leaveTime))
+	message(randomMessage(MSG_SUCCESS_LEAVE, leaveTime))
 
 def dayStatistics(con):
 	pass
