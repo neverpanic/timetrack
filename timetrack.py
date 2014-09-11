@@ -29,7 +29,7 @@ class ProgramAbortError(Exception):
 	def __init__(self, message, cause):
 		self.message = message
 		self.cause = cause
-	
+
 	def __str__(self):
 		if self.cause is not None:
 			return "Error: {}\n       {}".format(self.message, self.cause)
@@ -57,6 +57,9 @@ def error(msg, ex):
 def randomMessage(type, *args):
 	messageList = []
 
+	###########
+	# Arrival #
+	###########
 	if type == MSG_SUCCESS_ARRIVAL:
 		if len(args) > 0:
 			arrivalTime = args[0]
@@ -79,32 +82,35 @@ def randomMessage(type, *args):
 
 		messageList.append("Welcome and have a nice day!")
 
+	#########
+	# Break #
+	#########
 	elif type == MSG_SUCCESS_BREAK:
 		breakTime = None
 		workStartTime = None
 		if len(args) > 0:
 			breakTime = args[0]
 		if len(args) > 1:
-			workStartTime = args[0]
+			workStartTime = args[1]
 
 		if breakTime is not None and workStartTime is not None:
 			duration = breakTime - workStartTime
-			durationHours = duration.total_seconds() // 3600
-			durationMinutes = (duration.total_seconds() - (durationHours * 3600)) // 60
+			durationHours = int(duration.total_seconds() // 3600)
+			durationMinutes = int((duration.total_seconds() - (durationHours * 3600)) // 60)
 			msgText = ""
 			if durationHours > 1:
-				msgText += "{} hours".format(durationHours)
+				msgText += "{:d} hours".format(durationHours)
 			elif durationHours == 1:
-				msgText += "{} hour".format(durationHours)
+				msgText += "{:d} hour".format(durationHours)
 
 			if durationHours > 0 and durationMinutes > 2: # avoid 1 hour 2 minutes
 				msgText += " and "
 
 			if durationHours == 0 or durationMinutes > 2:
 				if durationMinutes > 1:
-					msgText += "{} minutes".format(durationMinutes)
+					msgText += "{:02d} minutes".format(durationMinutes)
 				else:
-					msgText += "{} minutes".format(durationMinutes)
+					msgText += "{:02d} minutes".format(durationMinutes)
 
 			msgText += " of work."
 
@@ -127,6 +133,80 @@ def randomMessage(type, *args):
 		messageList.append("Enjoy your break!")
 		messageList.append("Relax a little and all your problems will have gotten simpler once you're back :-)")
 		messageList.append("Bye bye!")
+
+	################
+	# End of break #
+	################
+	elif type == MSG_SUCCESS_RESUME:
+		resumeTime = None
+		breakStartTime = None
+		if len(args) > 0:
+			resumeTime = args[0]
+		if len(args) > 1:
+			breakStartTime = args[1]
+
+		if resumeTime is not None:
+			if resumeTime.hour <= 12:
+				messageList.append("With renewed vigour into the rest of the day! Welcome back.")
+				messageList.append("The rest of the day right ahead, but with fresh strength.")
+			elif resumeTime.hour >= 15:
+				messageList.append("Just a few more hours. Hang in, closing time is near!")
+				messageList.append("Almost there. Just a few more minutes.")
+
+		if resumeTime is not None and breakStartTime is not None:
+			duration = resumeTime - breakStartTime
+			durationMinutes = int(duration.total_seconds() // 60)
+
+			msgText = "{:d}".format(durationMinutes)
+			if durationMinutes != 1:
+				msgText += " minutes"
+			else:
+				msgText += " minute"
+			msgText += " break. Welcome back and have fun with the rest of your day."
+			messageList.append(msgText)
+
+			if durationMinutes < 30:
+				messageList.append("Quick coffee break finished? Back to work, getting things done!")
+				messageList.append("That break certainly was a quick one! Welcome back!")
+			elif durationMinutes >= 30 and durationMinutes < 45:
+				messageList.append("Average size break, now back to work.")
+			else:
+				messageList.append("That was a pretty long break. You can pull off more then 9 hours today.")
+				messageList.append("Pretty extensive {:d} minute break. Hope you're feeling refreshed now :)".format(durationMinutes))
+
+		messageList.append("Welcome back at your desk. Your laptop has been missing you.")
+		messageList.append("Back into work! Enjoy!")
+		messageList.append("Welcome back.")
+
+	###################
+	# End of work day #
+	###################
+	elif type == MSG_SUCCESS_LEAVE:
+		endTime = None
+		if len(args) > 0:
+			endTime = args[0]
+
+		if endTime is not None:
+			if endTime.hour <= 14:
+				messageList.append("Going home early today? Go ahead, I'm sure you earned it.")
+				messageList.append("Short work day, enjoy your afternoon.")
+			elif endTime.hour > 14 and endTime.hour < 18:
+				messageList.append("Have a nice evening.")
+				messageList.append("Bon appetit and enjoy your evening!")
+			else:
+				messageList.append("Leaving late today?")
+				messageList.append("Did you just stay because the job was interesting or did something have to get done today?")
+				messageList.append("Finally. Have a good night's sleep!")
+			if endTime.weekday() == 4: # Friday
+				messageList.append("Friday! Have a nice weekend!")
+				messageList.append("Finally, this week has come to an end.")
+				messageList.append("Fuck this shit, it's Friday and I'm going home!")
+			elif endTime.weekday() == 5: # Saturday
+				messageList.append("Ugh, somebody made you come in on Saturday. Enjoy your Sunday then.")
+				messageList.append("About time the week was over, isn't it?")
+
+		messageList.append("A good time to leave. Because it's always a good time to do that. :)")
+		messageList.append("You're right, go home. Tomorrow's yet another day.")
 
 	return random.choice(messageList)
 
