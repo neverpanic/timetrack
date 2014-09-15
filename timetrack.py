@@ -1,6 +1,6 @@
 #!/usr/bin/env python3.4
 
-from datetime import datetime, timedelta
+from datetime import datetime, date, time, timedelta
 
 import argparse
 import os
@@ -212,7 +212,7 @@ def randomMessage(type, *args):
 	# Not currently working even though the requested action requires it #
 	######################################################################
 	elif type == MSG_ERR_NOT_WORKING:
-		msg = "Error: You can't leave or take a break if you're not here in the first place."
+		msg = "You can't leave or take a break if you're not here in the first place."
 		if len(args) > 0:
 			if args[0] == ACT_BREAK:
 				msg += " You are currently taking a break."
@@ -224,7 +224,7 @@ def randomMessage(type, *args):
 	# Not currently taking a break even though you requested to resume #
 	####################################################################
 	elif type == MSG_ERR_NOT_BREAKING:
-		msg = "Error: You can't continue working if you're not currently taking a break."
+		msg = "You can't continue working if you're not currently taking a break."
 		if len(args) > 0:
 			if args[0] in [ACT_ARRIVE, ACT_RESUME]:
 				msg += " My data says you're here and working."
@@ -236,7 +236,7 @@ def randomMessage(type, *args):
 	# Not at home, but requested to start your day #
 	################################################
 	elif type == MSG_ERR_HAVE_NOT_LEFT:
-		msg = "Error: You cannot start your day when you're already (or still?) here."
+		msg = "You cannot start your day when you're already (or still?) here."
 		if len(args) > 0:
 			if args[0] in [ACT_ARRIVE, ACT_RESUME]:
 				msg += " My data says you're here and working."
@@ -300,7 +300,7 @@ def startTracking(con):
 	# Make sure you're not already at work.
 	lastType = getLastType(con)
 	if lastType is not None and lastType != ACT_LEAVE:
-		error(randomMessage(MSG_ERR_HAVE_NOT_LEFT))
+		error(randomMessage(MSG_ERR_HAVE_NOT_LEFT), None)
 
 	arrivalTime = datetime.now()
 	addEntry(con, ACT_ARRIVE, arrivalTime)
@@ -316,7 +316,7 @@ def suspendTracking(con):
 	lastType = getLastType(con)
 	lastTime = getLastTime(con)
 	if lastType not in [ACT_ARRIVE, ACT_RESUME]:
-		error(randomMessage(MSG_ERR_NOT_WORKING, lastType))
+		error(randomMessage(MSG_ERR_NOT_WORKING, lastType), None)
 
 	breakTime = datetime.now()
 	addEntry(con, ACT_BREAK, breakTime)
@@ -332,7 +332,7 @@ def resumeTracking(con):
 	lastType = getLastType(con)
 	lastTime = getLastTime(con)
 	if lastType != ACT_BREAK:
-		error(randomMessage(MSG_ERR_NOT_BREAKING, lastType))
+		error(randomMessage(MSG_ERR_NOT_BREAKING, lastType), None)
 
 	resumeTime = datetime.now()
 	addEntry(con, ACT_RESUME, resumeTime)
@@ -345,14 +345,62 @@ def endTracking(con):
 	# Make sure you've actually been at work. Can't leave if you're not even here!
 	lastType = getLastType(con)
 	if lastType not in [ACT_ARRIVE, ACT_RESUME]:
-		error(randomMessage(MSG_ERR_NOT_WORKING, lastType))
+		error(randomMessage(MSG_ERR_NOT_WORKING, lastType), None)
 
 	leaveTime = datetime.now()
 	addEntry(con, ACT_LEAVE, leaveTime)
 	message(randomMessage(MSG_SUCCESS_LEAVE, leaveTime))
 
+def getEntries(con, d):
+	# Get the arrival for the date
+	cur = con.execute("SELECT ts FROM times WHERE type = ? AND ts >= ? ORDER BY ts ASC LIMIT 1", (ACT_ARRIVE, datetime.combine(d, time())))
+	res = cur.fetchone()
+	if not res:
+		error("There is no arrival on {:%d.%m.%Y %H:%M}".format(d), None)
+	startTime = res['ts']
+
+	# Find the end date, if any
+	endTime = datetime.now()
+	cur = con.execute("SELECT ts FROM times WHERE type = ? AND ts >= ? AND ts <= ? ORDER BY ts ASC LIMIT 1", (ACT_LEAVE, startTime, datetime.now()))
+	res = cur.fetchone()
+	if res:
+		endTime = res['ts']
+
+	# Get all entries between the start time, and the end time (if applicable)
+	cur = con.execute("SELECT type, ts FROM times WHERE ts >= ? AND ts <= ? ORDER BY ts ASC", (startTime, endTime))
+	return cur
+
+def getWorkTimeForDay(con, d=date.today()):
+	summaryTime = timedelta(0)
+	arrival = None
+	for type, ts in getEntries(con, d):
+		if not arrival:
+			if type not in [ACT_ARRIVE, ACT_RESUME]:
+				error("Expected arrival while computing presence time, got {} at {}".format(type, ts), None)
+			arrival = ts
+		else:
+			if type not in [ACT_BREAK, ACT_LEAVE]:
+				error("Expected break/leave while computing presence time, got {} at {}".format(type, ts), None)
+			summaryTime += ts - arrival
+			arrival = None
+	if arrival:
+		# open end
+		summaryTime += datetime.now() - arrival
+	
+	return (arrival is not None, summaryTime)
+
 def dayStatistics(con):
-	pass
+	headerPrinted = False
+	for type, ts in getEntries(con, date.today()):
+		if not headerPrinted:
+			message("Time tracking entries for today:")
+			headerPrinted = True
+		message("  {:<10} {:%d.%m.%Y %H:%M}".format(type, ts))
+	
+	currentlyHere, totalTime = getWorkTimeForDay(con)
+	if currentlyHere:
+		message("You are currently at work.")
+	message("You have worked {} h {} min today".format(int(totalTime.total_seconds() // 60 * 60), int((totalTime.total_seconds() % 3600) // 60)))
 
 def weekStatistics(con):
 	pass
@@ -375,7 +423,7 @@ actions = {
 }
 
 if args.action not in actions:
-	print('Unsupported action "{}". Use --help to get usage information.'.format(args.action), file=sys.stderr)
+	message('Unsupported action "{}". Use --help to get usage information.'.format(args.action), file=sys.stderr)
 	sys.exit(1)
 
 try:
