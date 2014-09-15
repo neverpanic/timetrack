@@ -208,6 +208,42 @@ def randomMessage(type, *args):
 		messageList.append("A good time to leave. Because it's always a good time to do that. :)")
 		messageList.append("You're right, go home. Tomorrow's yet another day.")
 
+	######################################################################
+	# Not currently working even though the requested action requires it #
+	######################################################################
+	elif type == MSG_ERR_NOT_WORKING:
+		msg = "Error: You can't leave or take a break if you're not here in the first place."
+		if len(args) > 0:
+			if args[0] == ACT_BREAK:
+				msg += " You are currently taking a break."
+			elif args[0] == ACT_LEAVE:
+				msg += " According to my data, you're still at home."
+		messageList.append(msg)
+
+	####################################################################
+	# Not currently taking a break even though you requested to resume #
+	####################################################################
+	elif type == MSG_ERR_NOT_BREAKING:
+		msg = "Error: You can't continue working if you're not currently taking a break."
+		if len(args) > 0:
+			if args[0] in [ACT_ARRIVE, ACT_RESUME]:
+				msg += " My data says you're here and working."
+			elif args[0] == ACT_LEAVE:
+				msg += " According to my data, you're still at home."
+		messageList.append(msg)
+
+	################################################
+	# Not at home, but requested to start your day #
+	################################################
+	elif type == MSG_ERR_HAVE_NOT_LEFT:
+		msg = "Error: You cannot start your day when you're already (or still?) here."
+		if len(args) > 0:
+			if args[0] in [ACT_ARRIVE, ACT_RESUME]:
+				msg += " My data says you're here and working."
+			elif args[0] == ACT_BREAK:
+				msg += " It seems you're taking a break."
+		messageList.append(msg)
+
 	return random.choice(messageList)
 
 def dbSetup():
