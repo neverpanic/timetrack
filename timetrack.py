@@ -400,7 +400,7 @@ def dayStatistics(con):
 	currentlyHere, totalTime = getWorkTimeForDay(con)
 	if currentlyHere:
 		message("You are currently at work.")
-	message("You have worked {} h {} min today".format(int(totalTime.total_seconds() // 60 * 60), int((totalTime.total_seconds() % 3600) // 60)))
+	message("You have worked {} h {} min today".format(int(totalTime.total_seconds() // (60 * 60)), int((totalTime.total_seconds() % 3600) // 60)))
 
 def weekStatistics(con):
 	pass
