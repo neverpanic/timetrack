@@ -408,7 +408,7 @@ def weekStatistics(con, offset = 0):
 	today = date.today()
 	startOfWeek = today - timedelta(days = today.weekday()) + timedelta(weeks = offset)
 	endOfWeek = min(today + timedelta(days = 1), startOfWeek + timedelta(weeks = 1))
-	message("Statistics for week {:%W}:".format(startOfWeek))
+	message("Statistics for week {:>02d}:".format(startOfWeek.isocalendar()[1]))
 
 	current = startOfWeek
 	dailyHours = timedelta(hours = float(WEEK_HOURS) / 5.0)
@@ -459,7 +459,7 @@ def weekStatistics(con, offset = 0):
 		expectationHours = int(expectation.total_seconds() // (60 * 60))
 		expectationMinutes = int((expectation.total_seconds() % 3600) // 60)
 		message("   Expected:   {:>2d} h {:>02d} min".format(expectationHours, expectationMinutes))
-	message("    Week {:%W}:   {:>2d} h {:>02d} min    {: =+2.2f}".format(startOfWeek, weekTotalHours, weekTotalMinutes, weekExtraHours))
+	message("    Week {:>02d}:   {:>2d} h {:>02d} min    {: =+2.2f}".format(startOfWeek.isocalendar()[1], weekTotalHours, weekTotalMinutes, weekExtraHours))
 	if daysSoFar < 5:
 		# Calculate avg. remaining work time per day
 		totalExpectation = timedelta(hours = WEEK_HOURS)
