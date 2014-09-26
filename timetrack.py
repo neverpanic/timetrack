@@ -460,7 +460,7 @@ def weekStatistics(con, offset = 0):
 		expectationMinutes = int((expectation.total_seconds() % 3600) // 60)
 		message("   Expected:   {:>2d} h {:>02d} min".format(expectationHours, expectationMinutes))
 	message("    Week {:>02d}:   {:>2d} h {:>02d} min    {: =+2.2f}".format(startOfWeek.isocalendar()[1], weekTotalHours, weekTotalMinutes, weekExtraHours))
-	if daysSoFar < 5:
+	if daysSoFar < 5 or (daysSoFar == 5 and currentlyHere):
 		# Calculate avg. remaining work time per day
 		totalExpectation = timedelta(hours = WEEK_HOURS)
 		remaining = totalExpectation - weekTotal
