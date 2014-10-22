@@ -514,7 +514,7 @@ def weekStatistics(con, offset=0):
                     headerPrinted = True
                     message("   date         hours         diff ")
                     message("  ----------   -----------   ------")
-                message("  {:%d.%m.%Y}    {!s}".format(current, pae))
+                message("  {:%d.%m.%Y}    -              -".format(current))
 
         current += timedelta(days=1)
 
