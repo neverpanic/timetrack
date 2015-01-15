@@ -543,10 +543,9 @@ def weekStatistics(con, offset=0):
         message("  ----------   -----------   ------")
         message("  Remaining:   {:>2d} h {:>02d} min"
                 .format(remainingHours, remainingMinutes))
-        if daysSoFar < 4 or (daysSoFar == 4 and currentlyHere):
+        if daysSoFar < 4:
             # Remaining per day
-            remainingPerDay = remaining / (5 - (daysSoFar - (
-                1 if currentlyHere else 0)))
+            remainingPerDay = remaining / (5 - daysSoFar)
             remainingPerDayHours = int(
                 remainingPerDay.total_seconds() // (60 * 60))
             remainingPerDayMinutes = int(
