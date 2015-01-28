@@ -505,7 +505,7 @@ def weekStatistics(con, offset=0):
                 headerPrinted = True
                 message("   date         hours         diff ")
                 message("  ----------   -----------   ------")
-            message("  {:%d.%m.%Y}    {:>1d} h {:>02d} min    {: =+1.2f}"
+            message("  {:%d.%m.%Y}   {:>2d} h {:>02d} min    {: =+1.2f}"
                     .format(current, totalHours, totalMinutes, timedeltaHours))
         except ProgramAbortError as pae:
             if current.weekday() < 5:
