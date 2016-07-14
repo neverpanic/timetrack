@@ -414,17 +414,11 @@ def getEntries(con, d):
                        datetime.combine(d + timedelta(days=1), time())))
     res = cur.fetchone()
     if not res:
-        error("There is no arrival on {:%d.%m.%Y %H:%M}".format(d), None)
+        error("There is no arrival on {:%d.%m.%Y}".format(d), None)
     startTime = res['ts']
 
-    # Find the end date, if any
-    endTime = datetime.now()
-    cur = con.execute("SELECT ts FROM times WHERE type = ? AND ts >= ? AND ts "
-                      "<= ? ORDER BY ts ASC LIMIT 1",
-                      (ACT_LEAVE, startTime, datetime.now()))
-    res = cur.fetchone()
-    if res:
-        endTime = res['ts']
+    # Use the end of the day as endtime
+    endTime = datetime.combine(d + timedelta(days=1), time())
 
     # Get all entries between the start time, and the end time (if applicable)
     cur = con.execute("SELECT type, ts FROM times WHERE ts >= ? AND ts <= "
@@ -454,18 +448,19 @@ def getWorkTimeForDay(con, d=date.today()):
     return (arrival is not None, summaryTime)
 
 
-def dayStatistics(con):
+def dayStatistics(con, offset=0):
     headerPrinted = False
-    for type, ts in getEntries(con, date.today()):
+    targetDay = date.today() + timedelta(days=offset)
+    for type, ts in getEntries(con, targetDay):
         if not headerPrinted:
-            message("Time tracking entries for today:")
+            message("Time tracking entries for {:%d.%m.%Y}:".format(targetDay))
             headerPrinted = True
         message("  {:<10} {:%d.%m.%Y %H:%M}".format(type, ts))
 
     currentlyHere, totalTime = getWorkTimeForDay(con)
     if currentlyHere:
         message("You are currently at work.")
-    message("You have worked {} h {} min today".format(
+    message("You have worked {} h {} min".format(
         int(totalTime.total_seconds() // (60 * 60)),
         int((totalTime.total_seconds() % 3600) // 60)))
 
@@ -569,6 +564,9 @@ parser_closing = commands.add_parser('closing',
                                      help='End your work day')
 parser_day = commands.add_parser('day',
                                  help='Print daily statistics')
+parser_day.add_argument('offset', nargs='?', default=0, type=int,
+                        help='Offset in days to the current one to analyze. '
+                             'Note only negative values make sense here.')
 parser_week = commands.add_parser('week',
                                   help='Print weekly statistics')
 parser_week.add_argument('offset', nargs='?', default=0, type=int,
@@ -582,7 +580,7 @@ actions = {
     'break':    (suspendTracking, []),
     'resume':   (resumeTracking, []),
     'continue': (resumeTracking, []),
-    'day':      (dayStatistics, []),
+    'day':      (dayStatistics, ['offset']),
     'week':     (weekStatistics, ['offset']),
     'closing':  (endTracking, [])
 }
