@@ -266,7 +266,7 @@ def randomMessage(type, *args):
     ####################################################################
     elif type == MSG_ERR_NOT_BREAKING:
         msg = ("You can't continue working if you're not currently taking"
-               "a break.")
+               " a break.")
         if len(args) > 0:
             if args[0] in [ACT_ARRIVE, ACT_RESUME]:
                 msg += " My data says you're here and working."
