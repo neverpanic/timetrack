@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.5
+#!/usr/bin/env python3
 # vim:ts=4:sts=4:sw=4:tw=80:et
 
 from datetime import datetime, date, time, timedelta
@@ -548,6 +548,42 @@ def weekStatistics(con, offset=0):
             message("      Daily:   {:>2d} h {:>02d} min"
                     .format(remainingPerDayHours, remainingPerDayMinutes))
 
+def overallStatistics(con, weeks):
+    today = date.today()
+    startOfPeriod = (today - timedelta(days=today.weekday()) -
+                     timedelta(weeks=weeks))
+    endOfPeriod = today
+
+    current = startOfPeriod
+    dailyHours = timedelta(hours=float(WEEK_HOURS) / 5.0)
+    total = timedelta(seconds=0)
+    expected = timedelta(seconds=0)
+
+    while current <= endOfPeriod:
+        try:
+            _, timeForDay = getWorkTimeForDay(con, current)
+            total += timeForDay
+            if current.weekday() < 5:  # Not working normally on Saturday and Sunday
+                expected += dailyHours
+        except ProgramAbortError as pae:
+            pass  # ignore days where I didn't work (either sick or holiday)
+        current += timedelta(days=1)
+
+    diff = total - expected
+    expectedHours = int(expected.total_seconds() // (60 * 60))
+    expectedMinutes = int((expected.total_seconds() % (60 * 60)) // 60)
+    totalHours = int(total.total_seconds() // (60 * 60))
+    totalMinutes = int((total.total_seconds() % (60 * 60)) // 60)
+    diffNegative = diff.total_seconds() < 0
+    diffHours = int(abs(diff.total_seconds()) // (60 * 60))
+    diffMinutes = int((abs(diff.total_seconds()) % (60 * 60)) // 60)
+    diffHoursStr = f"{'-' if diffNegative else '+'}{diffHours:d}"
+    message(f"Statistics from {startOfPeriod.isoformat()} until today:")
+    message(f"Expected: {expectedHours:>4d} h {expectedMinutes:>02d} min")
+    message(f"   Total: {totalHours:>4d} h {totalMinutes:>02d} min")
+    message(f"    Diff: {diffHoursStr:>4s} h {diffMinutes:>02d} min")
+
+
 parser = argparse.ArgumentParser(description='Track your work time')
 
 commands = parser.add_subparsers(title='subcommands', dest='action',
@@ -572,6 +608,10 @@ parser_week = commands.add_parser('week',
 parser_week.add_argument('offset', nargs='?', default=0, type=int,
                          help='Offset in weeks to the current one to analyze. '
                               'Note only negative values make sense here.')
+parser_summary = commands.add_parser('summary', help='Print overall statistics')
+parser_summary.add_argument('weeks', nargs='?', type=int,
+                            default=date.today().isocalendar()[1],
+                            help='Number of weeks to include in summary')
 
 args = parser.parse_args()
 
@@ -582,6 +622,7 @@ actions = {
     'continue': (resumeTracking, []),
     'day':      (dayStatistics, ['offset']),
     'week':     (weekStatistics, ['offset']),
+    'summary':  (overallStatistics, ['weeks']),
     'closing':  (endTracking, [])
 }
 
