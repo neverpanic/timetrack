@@ -628,7 +628,7 @@ actions = {
 
 if args.action not in actions:
     message('Unsupported action "{}". Use --help to get usage information.'
-            .format(args.action), file=sys.stderr)
+            .format(args.action))
     sys.exit(1)
 
 try:
