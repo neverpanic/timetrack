@@ -341,6 +341,14 @@ def getLastTime(con):
     return row['ts']
 
 
+def getFirstTime(con):
+    cur = con.execute("SELECT ts FROM times ORDER BY ts ASC LIMIT 1")
+    row = cur.fetchone()
+    if row is None:
+        return None
+    return row['ts']
+
+
 def startTracking(con):
     """
     Start your day: Records your arrival time in the morning.
@@ -550,6 +558,15 @@ def weekStatistics(con, offset=0):
 
 def overallStatistics(con, weeks):
     today = date.today()
+    if weeks is None:
+        # by default, show all info we have
+        firstEntry = getFirstTime(con)
+        if firstEntry is not None:
+            weeks = (today - firstEntry.date()).days // 7 + 1
+        else:
+            # if there is no entry yet, default to showing the entire current
+            # year
+            weeks = today.isocalendar()[1]
     startOfPeriod = (today - timedelta(days=today.weekday()) -
                      timedelta(weeks=weeks))
     endOfPeriod = today
@@ -609,8 +626,7 @@ parser_week.add_argument('offset', nargs='?', default=0, type=int,
                          help='Offset in weeks to the current one to analyze. '
                               'Note only negative values make sense here.')
 parser_summary = commands.add_parser('summary', help='Print overall statistics')
-parser_summary.add_argument('weeks', nargs='?', type=int,
-                            default=date.today().isocalendar()[1],
+parser_summary.add_argument('weeks', nargs='?', type=int, default=None,
                             help='Number of weeks to include in summary')
 
 args = parser.parse_args()
