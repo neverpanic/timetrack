@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.12
 # vim:ts=4:sts=4:sw=4:tw=80:et
 
 from datetime import datetime, date, time, timedelta
@@ -288,6 +288,11 @@ def randomMessage(type, *args):
 
     return random.choice(messageList)
 
+def adapt_datetime_iso(val):
+    return val.isoformat(sep=" ", timespec="microseconds")
+
+def convert_datetime(val):
+    return datetime.fromisoformat(val.decode())
 
 def dbSetup():
     """
@@ -297,6 +302,8 @@ def dbSetup():
     con = sqlite3.connect(os.path.expanduser("~/.timetrack.db"),
                           detect_types=sqlite3.PARSE_DECLTYPES)
     con.row_factory = sqlite3.Row
+    sqlite3.register_adapter(datetime, adapt_datetime_iso)
+    sqlite3.register_converter("timestamp", convert_datetime)
 
     dbVersion = con.execute("PRAGMA user_version").fetchone()['user_version']
     if dbVersion == 0:
