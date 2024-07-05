@@ -86,7 +86,7 @@ def randomMessage(type, *args):
                 messageList.append("Have a nice start into the fresh week!")
                 messageList.append("New week, new luck!")
             elif arrivalTime.weekday() == 4:  # Friday
-                messageList.append("Last day of the week! Almost done! Keep "
+                messageList.append("Last day of the week! Almost done! Keep"
                                    " going!")
                 messageList.append("Just a couple more hours until weekend."
                                    " Have fun!")
