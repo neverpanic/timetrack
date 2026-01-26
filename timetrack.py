@@ -516,25 +516,25 @@ def weekStatistics(con, offset=0):
 
             if not headerPrinted:
                 headerPrinted = True
-                message("   date         hours         diff ")
-                message("  ----------   -----------   ------")
-            message("  {:%d.%m.%Y}   {:>2d} h {:>02d} min    {: =+1.2f}"
+                message("  date              hours         diff ")
+                message("----------------------------------------")
+            message("  {:%a %d.%m.%Y}   {:>2d} h {:>02d} min    {: =+1.2f}"
                     .format(current, totalHours, totalMinutes, timedeltaHours))
         except ProgramAbortError as pae:
             if current.weekday() < 5:
                 # For non-weekend days, print a message
                 if not headerPrinted:
                     headerPrinted = True
-                    message("   date         hours         diff ")
-                    message("  ----------   -----------   ------")
-                message("  {:%d.%m.%Y}    -              -".format(current))
+                    message("  date              hours         diff ")
+                    message("----------------------------------------")
+                message("  {:%a %d.%m.%Y}    -              -".format(current))
 
         current += timedelta(days=1)
 
     weekTotalHours = int(weekTotal.total_seconds() // (60 * 60))
     weekTotalMinutes = int((weekTotal.total_seconds() % 3600) // 60)
     weekExtraHours = extraHours.total_seconds() / (60 * 60)
-    message("  ----------   -----------   ------")
+    message("----------------------------------------")
 
     if daysSoFar < 5:
         # The week isn't over, compare your current state against the ideal
@@ -542,9 +542,9 @@ def weekStatistics(con, offset=0):
         expectation = dailyHours * daysSoFar
         expectationHours = int(expectation.total_seconds() // (60 * 60))
         expectationMinutes = int((expectation.total_seconds() % 3600) // 60)
-        message("   Expected:   {:>2d} h {:>02d} min"
+        message("    Expected:      {:>2d} h {:>02d} min"
                 .format(expectationHours, expectationMinutes))
-    message("    Week {:>02d}:   {:>2d} h {:>02d} min    {: =+2.2f}"
+    message("     Week {:>02d}:      {:>2d} h {:>02d} min    {: =+2.2f}"
             .format(startOfWeek.isocalendar()[1], weekTotalHours,
                     weekTotalMinutes, weekExtraHours))
     if daysSoFar < 5 or (daysSoFar == 5 and currentlyHere):
@@ -553,8 +553,8 @@ def weekStatistics(con, offset=0):
         remaining = totalExpectation - weekTotal
         remainingHours = int(remaining.total_seconds() // (60 * 60))
         remainingMinutes = int((remaining.total_seconds() % 3600) // 60)
-        message("  ----------   -----------   ------")
-        message("  Remaining:   {:>2d} h {:>02d} min"
+        message("----------------------------------------")
+        message("   Remaining:      {:>2d} h {:>02d} min"
                 .format(remainingHours, remainingMinutes))
         if daysSoFar < 4:
             # Remaining per day
@@ -563,7 +563,7 @@ def weekStatistics(con, offset=0):
                 remainingPerDay.total_seconds() // (60 * 60))
             remainingPerDayMinutes = int(
                 (remainingPerDay.total_seconds() % 3600) // 60)
-            message("      Daily:   {:>2d} h {:>02d} min"
+            message("       Daily:      {:>2d} h {:>02d} min"
                     .format(remainingPerDayHours, remainingPerDayMinutes))
 
 def overallStatistics(con, weeks):
