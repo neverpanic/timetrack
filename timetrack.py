@@ -505,7 +505,10 @@ def weekStatistics(con, offset=0):
             totalHours = int(timeForDay.total_seconds() // (60 * 60))
             totalMinutes = int((timeForDay.total_seconds() % 3600) // 60)
 
-            timedeltaForDay = timeForDay - dailyHours
+            if current.isoweekday() < 6: # during the work week
+                timedeltaForDay = timeForDay - dailyHours
+            else:
+                timedeltaForDay = timeForDay
             timedeltaHours = timedeltaForDay.total_seconds() / (60 * 60)
 
             weekTotal += timeForDay
